@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Reddit Reels</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #000;
+      color: #fff;
+      overflow: hidden;
+      height: 100dvh;
+      width: 100vw;
+    }
+
+    /* ── Setup Screen ── */
+    #setup {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100dvh;
+      padding: 24px;
+      gap: 16px;
+      overflow-y: auto;
+      padding-top: 60px;
+    }
+
+    #setup h1 {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    #setup p {
+      color: #888;
+      font-size: 14px;
+      text-align: center;
+      max-width: 320px;
+    }
+
+    /* ── Input with suggestions ── */
+    .input-wrap {
+      width: 100%;
+      max-width: 400px;
+      position: relative;
+    }
+
+    #subreddit-input {
+      width: 100%;
+      padding: 14px 18px;
+      border-radius: 12px;
+      border: 1px solid #333;
+      background: #111;
+      color: #fff;
+      font-size: 16px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    #subreddit-input:focus { border-color: #ff4500; }
+
+    #suggestions {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      z-index: 50;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-top: none;
+      border-radius: 0 0 12px 12px;
+      max-height: 240px;
+      overflow-y: auto;
+    }
+
+    .suggestion {
+      padding: 10px 16px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background 0.15s;
+    }
+
+    .suggestion:hover { background: #252525; }
+
+    .suggestion-name {
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .suggestion-meta {
+      font-size: 11px;
+      color: #666;
+    }
+
+    /* ── Saved subreddits checkboxes ── */
+    #saved-subs {
+      width: 100%;
+      max-width: 400px;
+    }
+
+    #saved-subs h3 {
+      font-size: 13px;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 10px;
+    }
+
+    .saved-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .sub-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: 20px;
+      border: 1px solid #333;
+      background: #111;
+      cursor: pointer;
+      transition: all 0.15s;
+      user-select: none;
+    }
+
+    .sub-chip:hover { border-color: #555; }
+
+    .sub-chip.checked {
+      border-color: #ff4500;
+      background: rgba(255, 69, 0, 0.15);
+    }
+
+    .sub-chip input {
+      display: none;
+    }
+
+    .sub-chip .chip-check {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+      border: 2px solid #555;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+
+    .sub-chip.checked .chip-check {
+      border-color: #ff4500;
+      background: #ff4500;
+    }
+
+    .sub-chip .chip-label {
+      font-size: 14px;
+      color: #ccc;
+    }
+
+    .sub-chip.checked .chip-label {
+      color: #fff;
+    }
+
+    .sub-chip .chip-remove {
+      font-size: 14px;
+      color: #555;
+      margin-left: 2px;
+      padding: 0 2px;
+      line-height: 1;
+      transition: color 0.15s;
+    }
+
+    .sub-chip .chip-remove:hover { color: #ff4500; }
+
+    /* ── Buttons row ── */
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    #fetch-btn {
+      flex: 1;
+      padding: 14px 20px;
+      border-radius: 12px;
+      border: none;
+      background: #ff4500;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    #fetch-btn:hover { opacity: 0.85; }
+    #fetch-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    #clear-saved {
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px solid #333;
+      background: transparent;
+      color: #888;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+
+    #clear-saved:hover { border-color: #ff4500; color: #ff4500; }
+
+    #status {
+      color: #888;
+      font-size: 13px;
+      min-height: 20px;
+      text-align: center;
+    }
+
+    /* ── Loading ── */
+    #loading {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100dvh;
+      gap: 16px;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid #333;
+      border-top-color: #ff4500;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Reels Feed ── */
+    #feed {
+      display: none;
+      height: 100dvh;
+      overflow-y: scroll;
+      scroll-snap-type: y mandatory;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .reel {
+      height: 100dvh;
+      width: 100vw;
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+    }
+
+    .reel-overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 20px 16px 32px;
+      background: linear-gradient(transparent, rgba(0,0,0,0.85));
+      pointer-events: none;
+    }
+
+    .reel-subreddit {
+      font-size: 13px;
+      font-weight: 600;
+      color: #ff4500;
+      margin-bottom: 4px;
+    }
+
+    .reel-title {
+      font-size: 15px;
+      font-weight: 500;
+      line-height: 1.3;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .reel-meta {
+      font-size: 12px;
+      color: #888;
+      margin-top: 6px;
+    }
+
+    .reel-category {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      pointer-events: none;
+    }
+
+    .cat-all-time { background: rgba(255, 69, 0, 0.8); }
+    .cat-year { background: rgba(99, 69, 255, 0.8); }
+    .cat-new { background: rgba(0, 180, 100, 0.8); }
+
+    .reel-counter {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.6);
+      pointer-events: none;
+    }
+
+    .play-indicator {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      font-size: 64px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s, transform 0.2s;
+    }
+
+    .play-indicator.show {
+      transform: translate(-50%, -50%) scale(1);
+      opacity: 0.7;
+    }
+
+    .reel-loader {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 36px;
+      height: 36px;
+      border: 3px solid #333;
+      border-top-color: #ff4500;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .reel-poster {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center;
+      filter: blur(12px) brightness(0.4);
+      z-index: 0;
+    }
+
+    .reel video,
+    .reel img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      position: relative;
+      z-index: 2;
+    }
+
+    #back-btn {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 100;
+      display: none;
+      padding: 6px 16px;
+      border-radius: 20px;
+      border: 1px solid #333;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      color: #fff;
+      font-size: 13px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="setup">
+    <h1>Reddit Reels</h1>
+    <p>Enter subreddits to fetch the best gifs and videos into a scrollable feed</p>
+
+    <div class="input-wrap">
+      <input
+        id="subreddit-input"
+        type="text"
+        placeholder="Type to search subreddits..."
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <div id="suggestions"></div>
+    </div>
+
+    <div id="saved-subs"></div>
+
+    <div class="btn-row">
+      <button id="fetch-btn">Load Reels</button>
+      <button id="clear-saved">Clear All</button>
+    </div>
+    <div id="status"></div>
+  </div>
+
+  <div id="loading">
+    <div class="spinner"></div>
+    <div id="loading-text">Fetching posts...</div>
+  </div>
+
+  <div id="feed"></div>
+  <button id="back-btn">Change Subreddits</button>
+
+  <script>
+    const CORS_PROXY = 'https://corsproxy.io/?';
+    const REDDIT_BASE = `${CORS_PROXY}${encodeURIComponent('https://www.reddit.com')}`;
+    const LS_KEY = 'reddit-reels-subs';
+
+    const setupEl = document.getElementById('setup');
+    const loadingEl = document.getElementById('loading');
+    const feedEl = document.getElementById('feed');
+    const inputEl = document.getElementById('subreddit-input');
+    const suggestionsEl = document.getElementById('suggestions');
+    const savedSubsEl = document.getElementById('saved-subs');
+    const fetchBtn = document.getElementById('fetch-btn');
+    const clearBtn = document.getElementById('clear-saved');
+    const statusEl = document.getElementById('status');
+    const loadingText = document.getElementById('loading-text');
+    const backBtn = document.getElementById('back-btn');
+
+    // ── LocalStorage helpers ──
+
+    function getSavedSubs() {
+      try {
+        return JSON.parse(localStorage.getItem(LS_KEY)) || [];
+      } catch { return []; }
+    }
+
+    function saveSubs(subs) {
+      localStorage.setItem(LS_KEY, JSON.stringify([...new Set(subs)]));
+    }
+
+    function addSub(name) {
+      const subs = getSavedSubs();
+      const lower = name.toLowerCase();
+      if (!subs.some(s => s.toLowerCase() === lower)) {
+        saveSubs([...subs, name]);
+      }
+      renderSavedSubs();
+    }
+
+    function removeSub(name) {
+      const lower = name.toLowerCase();
+      saveSubs(getSavedSubs().filter(s => s.toLowerCase() !== lower));
+      renderSavedSubs();
+    }
+
+    // ── Render saved subreddit chips ──
+
+    function renderSavedSubs() {
+      const subs = getSavedSubs();
+      if (subs.length === 0) {
+        savedSubsEl.innerHTML = '';
+        return;
+      }
+
+      savedSubsEl.innerHTML = `
+        <h3>Your Subreddits</h3>
+        <div class="saved-grid">
+          ${subs.map(s => `
+            <label class="sub-chip checked" data-sub="${escapeHTML(s)}">
+              <input type="checkbox" checked />
+              <span class="chip-check">&#10003;</span>
+              <span class="chip-label">r/${escapeHTML(s)}</span>
+              <span class="chip-remove" title="Remove">&times;</span>
+            </label>
+          `).join('')}
+        </div>
+      `;
+
+      // Toggle checkbox
+      savedSubsEl.querySelectorAll('.sub-chip').forEach(chip => {
+        const cb = chip.querySelector('input');
+
+        chip.addEventListener('click', (e) => {
+          if (e.target.classList.contains('chip-remove')) {
+            e.preventDefault();
+            e.stopPropagation();
+            removeSub(chip.dataset.sub);
+            return;
+          }
+          cb.checked = !cb.checked;
+          chip.classList.toggle('checked', cb.checked);
+        });
+      });
+    }
+
+    function getCheckedSubs() {
+      const chips = savedSubsEl.querySelectorAll('.sub-chip');
+      const checked = [];
+      chips.forEach(chip => {
+        if (chip.querySelector('input').checked) {
+          checked.push(chip.dataset.sub);
+        }
+      });
+      return checked;
+    }
+
+    // ── Suggestions (search Reddit subreddits) ──
+
+    let suggestTimer = null;
+
+    function formatSubscribers(n) {
+      if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M members';
+      if (n >= 1000) return (n / 1000).toFixed(0) + 'K members';
+      return n + ' members';
+    }
+
+    async function fetchSuggestions(query) {
+      if (!query || query.length < 2) {
+        suggestionsEl.style.display = 'none';
+        return;
+      }
+      try {
+        const suggestUrl = `${CORS_PROXY}${encodeURIComponent(
+          `https://www.reddit.com/subreddits/search.json?q=${encodeURIComponent(query)}&limit=10&raw_json=1&include_over_18=on`
+        )}`;
+        const res = await fetch(suggestUrl);
+        if (!res.ok) return;
+        const data = await res.json();
+        const subs = (data?.data?.children || []).map(c => ({
+          name: c.data.display_name,
+          title: c.data.title,
+          subscribers: c.data.subscribers || 0,
+          over18: c.data.over18,
+        }));
+
+        if (subs.length === 0) {
+          suggestionsEl.style.display = 'none';
+          return;
+        }
+
+        suggestionsEl.innerHTML = subs.map(s => `
+          <div class="suggestion" data-name="${escapeHTML(s.name)}">
+            <span class="suggestion-name">r/${escapeHTML(s.name)}</span>
+            <span class="suggestion-meta">${formatSubscribers(s.subscribers)}</span>
+          </div>
+        `).join('');
+
+        suggestionsEl.querySelectorAll('.suggestion').forEach(el => {
+          el.addEventListener('click', () => {
+            addSub(el.dataset.name);
+            inputEl.value = '';
+            suggestionsEl.style.display = 'none';
+          });
+        });
+
+        suggestionsEl.style.display = 'block';
+      } catch (err) {
+        console.warn('Suggestion fetch failed:', err);
+      }
+    }
+
+    inputEl.addEventListener('input', () => {
+      clearTimeout(suggestTimer);
+      suggestTimer = setTimeout(() => fetchSuggestions(inputEl.value.trim()), 300);
+    });
+
+    inputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const val = inputEl.value.trim().replace(/^r\//, '');
+        if (val) {
+          addSub(val);
+          inputEl.value = '';
+          suggestionsEl.style.display = 'none';
+        }
+      }
+    });
+
+    // Close suggestions on outside click
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.input-wrap')) {
+        suggestionsEl.style.display = 'none';
+      }
+    });
+
+    // ── Reddit fetch helpers ──
+
+    async function fetchRedditJSON(url) {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    }
+
+    function extractMedia(post) {
+      const d = post.data;
+      // Grab best thumbnail for poster
+      const thumb = (
+        d.preview?.images?.[0]?.resolutions?.slice(-1)?.[0]?.url ||
+        d.preview?.images?.[0]?.source?.url ||
+        d.thumbnail || ''
+      ).replace(/&amp;/g, '&');
+      const poster = (thumb && !thumb.startsWith('http') ? '' : thumb) || '';
+
+      if (d.is_video && d.media?.reddit_video?.fallback_url) {
+        return {
+          type: 'video',
+          url: d.media.reddit_video.fallback_url.split('?')[0],
+          poster,
+        };
+      }
+
+      if (d.preview?.reddit_video_preview?.fallback_url) {
+        return {
+          type: 'video',
+          url: d.preview.reddit_video_preview.fallback_url.split('?')[0],
+          poster,
+        };
+      }
+
+      if (d.url && /\.mp4(\?|$)/i.test(d.url)) {
+        return { type: 'video', url: d.url, poster };
+      }
+
+      if (d.preview?.images?.[0]?.variants?.mp4?.source?.url) {
+        return {
+          type: 'video',
+          url: d.preview.images[0].variants.mp4.source.url.replace(/&amp;/g, '&'),
+          poster,
+        };
+      }
+
+      if (d.url && /\.gif(\?|$)/i.test(d.url)) {
+        if (d.preview?.images?.[0]?.variants?.mp4?.source?.url) {
+          return {
+            type: 'video',
+            url: d.preview.images[0].variants.mp4.source.url.replace(/&amp;/g, '&'),
+            poster,
+          };
+        }
+        return { type: 'image', url: d.url, poster };
+      }
+
+      if (d.url && /imgur\.com.*\.gifv$/i.test(d.url)) {
+        return { type: 'video', url: d.url.replace('.gifv', '.mp4'), poster };
+      }
+
+      return null;
+    }
+
+    function parsePosts(children, category) {
+      return (children || [])
+        .map(post => {
+          const media = extractMedia(post);
+          if (!media) return null;
+          return {
+            type: media.type,
+            url: media.url,
+            poster: media.poster,
+            title: post.data.title,
+            subreddit: post.data.subreddit_name_prefixed,
+            score: post.data.score,
+            author: post.data.author,
+            permalink: post.data.permalink,
+            created: post.data.created_utc,
+            category,
+          };
+        })
+        .filter(Boolean);
+    }
+
+    async function fetchSubredditPosts(subreddit, sort, params, category) {
+      const query = new URLSearchParams({ limit: '20', raw_json: '1', ...params });
+      const url = `${REDDIT_BASE}/r/${subreddit}/${sort}.json?${query}`;
+      try {
+        const data = await fetchRedditJSON(url);
+        return parsePosts(data?.data?.children, category);
+      } catch (err) {
+        console.warn(`Failed to fetch r/${subreddit}/${sort}:`, err);
+        return [];
+      }
+    }
+
+    function shuffle(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function escapeHTML(str) {
+      const d = document.createElement('div');
+      d.textContent = str;
+      return d.innerHTML;
+    }
+
+    function formatScore(n) {
+      if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+      if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+      return String(n);
+    }
+
+    // ── Streaming feed: append reels on the fly ──
+
+    const seenUrls = new Set();
+    let reelCount = 0;
+    let visibilityObserver = null;
+    let currentReelIndex = -1;
+
+    // Lazy-load: only current reel + 2 ahead get their video src set.
+    // Everything else is unloaded to save bandwidth.
+    const PRELOAD_AHEAD = 2;
+
+    function lazyLoadNearby(centerIndex) {
+      const reels = feedEl.querySelectorAll('.reel');
+      reels.forEach((reel, i) => {
+        const video = reel.querySelector('video');
+        if (!video) return;
+        const mediaUrl = reel.dataset.mediaUrl;
+        const inRange = i >= centerIndex - 1 && i <= centerIndex + PRELOAD_AHEAD;
+
+        if (inRange && !video.src) {
+          video.src = mediaUrl;
+          video.load();
+        } else if (!inRange && video.src) {
+          video.pause();
+          video.removeAttribute('src');
+          video.load(); // reset
+        }
+      });
+    }
+
+    function ensureObserver() {
+      if (visibilityObserver) return visibilityObserver;
+      visibilityObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          const reel = entry.target;
+          const video = reel.querySelector('video');
+          const loader = reel.querySelector('.reel-loader');
+          const idx = [...feedEl.querySelectorAll('.reel')].indexOf(reel);
+
+          if (entry.isIntersecting) {
+            currentReelIndex = idx;
+            lazyLoadNearby(idx);
+            if (video) {
+              const tryPlay = () => {
+                video.currentTime = 0;
+                video.play().then(() => {
+                  if (loader) loader.style.display = 'none';
+                }).catch(() => {});
+              };
+              if (video.readyState >= 2) {
+                tryPlay();
+              } else {
+                if (loader) loader.style.display = 'block';
+                video.addEventListener('canplay', tryPlay, { once: true });
+              }
+            }
+          } else {
+            if (video) video.pause();
+          }
+        });
+      }, { threshold: 0.6 });
+      return visibilityObserver;
+    }
+
+    function appendReels(posts) {
+      const observer = ensureObserver();
+      const newPosts = posts.filter(p => {
+        if (seenUrls.has(p.url)) return false;
+        seenUrls.add(p.url);
+        return true;
+      });
+
+      newPosts.forEach(post => {
+        reelCount++;
+        const reel = document.createElement('div');
+        reel.className = 'reel';
+        reel.dataset.mediaUrl = post.url;
+
+        // Blurred poster background
+        if (post.poster) {
+          const bg = document.createElement('div');
+          bg.className = 'reel-poster';
+          bg.style.backgroundImage = `url(${post.poster})`;
+          reel.appendChild(bg);
+        }
+
+        // Loading spinner
+        const loader = document.createElement('div');
+        loader.className = 'reel-loader';
+        reel.appendChild(loader);
+
+        if (post.type === 'video') {
+          const video = document.createElement('video');
+          // Don't set src yet — lazy loaded by observer
+          video.loop = true;
+          video.muted = true;
+          video.playsInline = true;
+          video.preload = 'auto';
+          video.setAttribute('playsinline', '');
+          video.setAttribute('webkit-playsinline', '');
+          if (post.poster) video.poster = post.poster;
+          reel.appendChild(video);
+
+          // Hide loader when video can play
+          video.addEventListener('canplay', () => {
+            loader.style.display = 'none';
+          }, { once: true });
+
+          const indicator = document.createElement('div');
+          indicator.className = 'play-indicator';
+          indicator.textContent = '▶';
+          reel.appendChild(indicator);
+
+          reel.addEventListener('click', () => {
+            if (video.paused) {
+              video.play();
+              indicator.textContent = '▶';
+            } else {
+              video.pause();
+              indicator.textContent = '⏸';
+            }
+            indicator.classList.add('show');
+            setTimeout(() => indicator.classList.remove('show'), 400);
+          });
+        } else {
+          const img = document.createElement('img');
+          img.src = post.url;
+          img.loading = 'lazy';
+          img.alt = post.title;
+          img.onload = () => { loader.style.display = 'none'; };
+          reel.appendChild(img);
+        }
+
+        const catMap = {
+          'all-time': ['Top All Time', 'cat-all-time'],
+          'year': ['Top Year', 'cat-year'],
+          'new': ['New', 'cat-new'],
+        };
+        const [catLabel, catClass] = catMap[post.category] || ['', ''];
+        const badge = document.createElement('div');
+        badge.className = `reel-category ${catClass}`;
+        badge.textContent = catLabel;
+        reel.appendChild(badge);
+
+        const counter = document.createElement('div');
+        counter.className = 'reel-counter';
+        reel.appendChild(counter);
+
+        const overlay = document.createElement('div');
+        overlay.className = 'reel-overlay';
+        overlay.innerHTML = `
+          <div class="reel-subreddit">${post.subreddit}</div>
+          <div class="reel-title">${escapeHTML(post.title)}</div>
+          <div class="reel-meta">${formatScore(post.score)} · u/${escapeHTML(post.author)}</div>
+        `;
+        reel.appendChild(overlay);
+
+        feedEl.appendChild(reel);
+        observer.observe(reel);
+      });
+
+      // Update all counters with current total
+      const total = feedEl.querySelectorAll('.reel').length;
+      feedEl.querySelectorAll('.reel-counter').forEach((el, i) => {
+        el.textContent = `${i + 1} / ${total}`;
+      });
+
+      // Preload first few if feed just started
+      if (currentReelIndex < 0 && total > 0) {
+        currentReelIndex = 0;
+        lazyLoadNearby(0);
+      }
+
+      return newPosts.length;
+    }
+
+    function resetFeed() {
+      feedEl.innerHTML = '';
+      seenUrls.clear();
+      reelCount = 0;
+      currentReelIndex = -1;
+      if (visibilityObserver) {
+        visibilityObserver.disconnect();
+        visibilityObserver = null;
+      }
+    }
+
+    // ── Screen transitions ──
+
+    function showScreen(screen) {
+      setupEl.style.display = screen === 'setup' ? 'flex' : 'none';
+      loadingEl.style.display = screen === 'loading' ? 'flex' : 'none';
+      feedEl.style.display = screen === 'feed' ? 'block' : 'none';
+      backBtn.style.display = screen === 'feed' ? 'block' : 'none';
+    }
+
+    // ── Main actions ──
+
+    fetchBtn.addEventListener('click', async () => {
+      const subs = getCheckedSubs();
+      if (subs.length === 0) {
+        statusEl.textContent = 'Check at least one subreddit or type to add new ones';
+        return;
+      }
+
+      fetchBtn.disabled = true;
+      resetFeed();
+      showScreen('loading');
+      loadingText.textContent = `Fetching first batch...`;
+
+      // Build list of all fetch jobs: [{sub, sort, params, category}]
+      const jobs = subs.flatMap(sub => [
+        { sub, sort: 'top', params: { t: 'all' }, category: 'all-time' },
+        { sub, sort: 'top', params: { t: 'year' }, category: 'year' },
+        { sub, sort: 'new', params: {}, category: 'new' },
+      ]);
+
+      // Shuffle jobs so we get variety fast
+      const shuffledJobs = shuffle(jobs);
+
+      let feedShown = false;
+      let totalAdded = 0;
+
+      for (const job of shuffledJobs) {
+        const posts = await fetchSubredditPosts(job.sub, job.sort, job.params, job.category);
+        const added = appendReels(shuffle(posts));
+        totalAdded += added;
+
+        // Show feed as soon as we have first batch of reels
+        if (!feedShown && totalAdded > 0) {
+          showScreen('feed');
+          feedShown = true;
+        }
+
+        if (!feedShown) {
+          loadingText.textContent = `Fetching r/${job.sub} (${job.category})...`;
+        }
+      }
+
+      if (!feedShown) {
+        showScreen('setup');
+        statusEl.textContent = 'No videos or gifs found. Try different subreddits.';
+      }
+
+      fetchBtn.disabled = false;
+    });
+
+    clearBtn.addEventListener('click', () => {
+      localStorage.removeItem(LS_KEY);
+      renderSavedSubs();
+    });
+
+    backBtn.addEventListener('click', () => {
+      resetFeed();
+      showScreen('setup');
+    });
+
+    // ── Init ──
+    renderSavedSubs();
+  </script>
+</body>
+</html>
