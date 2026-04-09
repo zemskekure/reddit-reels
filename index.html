@@ -939,26 +939,20 @@
       // Shuffle jobs so we get variety fast
       const shuffledJobs = shuffle(jobs);
 
-      let feedShown = false;
-      let totalAdded = 0;
+      // Fetch all posts first, then shuffle everything together
+      const allPosts = [];
 
       for (const job of shuffledJobs) {
+        loadingText.textContent = `Fetching r/${job.sub} (${job.category})...`;
         const posts = await fetchSubredditPosts(job.sub, job.sort, job.params, job.category);
-        const added = appendReels(shuffle(posts));
-        totalAdded += added;
-
-        // Show feed as soon as we have first batch of reels
-        if (!feedShown && totalAdded > 0) {
-          showScreen('feed');
-          feedShown = true;
-        }
-
-        if (!feedShown) {
-          loadingText.textContent = `Fetching r/${job.sub} (${job.category})...`;
-        }
+        allPosts.push(...posts);
       }
 
-      if (!feedShown) {
+      const added = appendReels(shuffle(allPosts));
+
+      if (added > 0) {
+        showScreen('feed');
+      } else {
         showScreen('setup');
         statusEl.textContent = 'No videos or gifs found. Try different subreddits.';
       }
